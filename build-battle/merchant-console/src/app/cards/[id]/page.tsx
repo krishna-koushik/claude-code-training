@@ -63,6 +63,11 @@ export default async function CardDetail({
         </Field>
         <Field label="Spend limit">
           {formatMoney(card.spendLimit, card.currency)}
+          {card.currencyMatchesMerchant === false && (
+            <p className="mt-1 text-xs text-gray-500">
+              {merchant.name} settles in {merchant.currency}.
+            </p>
+          )}
         </Field>
         <Field label="Category lock">
           {card.categoryLock ? CATEGORY_LABELS[card.categoryLock] : "None"}

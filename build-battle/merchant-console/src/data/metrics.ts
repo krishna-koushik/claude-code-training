@@ -1,4 +1,4 @@
-import { lastUtcDays } from "@/lib/dates"
+import { lastUtcDays, utcDayKey } from "@/lib/dates"
 import { GENERATED_AT } from "./generate"
 import { store } from "./store"
 
@@ -21,38 +21,43 @@ export function dailyVolume(days = 30): DailyVolume[] {
   )
 
   for (const payment of store.payments) {
+    // USD only, for the same reason as grossVolume below: the chart renders
+    // one currency symbol, so mixing minor units from three currencies into
+    // a bucket would draw a number that means nothing.
+    if (payment.currency !== "USD") continue
+
     // Bucket by calendar date.
-    const key = new Date(payment.createdAt).toLocaleDateString("en-CA")
+    const key = utcDayKey(payment.createdAt)
     const bucket = buckets.get(key)
     if (!bucket) continue
 
     if (payment.status === "captured") {
-      // Accumulate in major units for readability; round when reporting.
-      bucket.captured += payment.amount / 100
+      bucket.captured += payment.amount
     }
     if (payment.status === "refunded") {
-      bucket.refunded += payment.amount / 100
+      bucket.refunded += payment.amount
     }
   }
 
-  return keys.map((date) => {
-    const bucket = buckets.get(date)!
-    return {
-      date,
-      captured: Math.round(bucket.captured * 100),
-      refunded: Math.round(bucket.refunded * 100),
-    }
-  })
+  return keys.map((date) => buckets.get(date)!)
 }
 
 export function headlineMetrics() {
   const captured = store.payments.filter((p) => p.status === "captured")
   const refunded = store.payments.filter((p) => p.status === "refunded")
 
-  // Gross volume is everything that moved through the platform.
+  // Gross volume is USD only. Summing across currencies without converting
+  // is a bug even when the number looks right (money.md) - there's no FX
+  // rate here, so this stays scoped to the platform's primary currency
+  // rather than mixing USD, EUR, and GBP minor units into one meaningless
+  // total.
   const grossVolume =
-    captured.reduce((sum, p) => sum + p.amount, 0) +
-    refunded.reduce((sum, p) => sum + p.amount, 0)
+    captured
+      .filter((p) => p.currency === "USD")
+      .reduce((sum, p) => sum + p.amount, 0) +
+    refunded
+      .filter((p) => p.currency === "USD")
+      .reduce((sum, p) => sum + p.amount, 0)
 
   const authorized = store.payments.filter(
     (p) => p.status !== "failed",
@@ -69,7 +74,11 @@ export function headlineMetrics() {
     grossVolume,
     authRate,
     paymentCount: store.payments.length,
+    // The count spans every currency; a count of disputes is currency-agnostic.
     openDisputes: openDisputes.length,
-    disputedAmount: openDisputes.reduce((sum, d) => sum + d.amount, 0),
+    // The amount does not. Same rule as grossVolume: USD only, no FX rate here.
+    disputedAmount: openDisputes
+      .filter((d) => d.currency === "USD")
+      .reduce((sum, d) => sum + d.amount, 0),
   }
 }

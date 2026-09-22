@@ -206,6 +206,12 @@ export function issueCard(
   const cardNumber = generateCardNumber(() => randomInt(0, 10))
   const createdAt = now.toISOString()
 
+  // The server is the authority on the currency/merchant relationship, not
+  // the drawer's inline hint: verified and recorded here, never rejected — a
+  // US merchant buying EUR ad spend is a legitimate cross-currency card.
+  const merchant = merchantById(input.merchantId)
+  const currencyMatchesMerchant = merchant?.currency === input.currency
+
   const card: Card = {
     id: nextCardId(),
     merchantId: input.merchantId,
@@ -217,6 +223,7 @@ export function issueCard(
     spendLimit: input.spendLimit,
     spent: 0,
     currency: input.currency,
+    currencyMatchesMerchant,
     status: "active",
     categoryLock: input.categoryLock,
     createdAt,

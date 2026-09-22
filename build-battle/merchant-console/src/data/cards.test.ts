@@ -184,6 +184,26 @@ describe("issueCard", () => {
   })
 })
 
+describe("issueCard currency verification", () => {
+  it("records a match when the card currency equals the merchant's currency", () => {
+    // merchant (mch_01) settles in USD; validBody() defaults to USD too.
+    const result = issueValid()
+    expect(result.card.currencyMatchesMerchant).toBe(true)
+  })
+
+  it("records a mismatch, and still issues the card, when the currency differs from the merchant's", () => {
+    // A US merchant buying EUR ad spend is a legitimate cross-currency card,
+    // so the server verifies and records the mismatch without rejecting it.
+    // There is no route-level test harness in this repo, so a fresh
+    // (non-replayed) issue here stands in for the API's 201.
+    const result = issueValid({ currency: "EUR" })
+    expect("cardNumber" in result).toBe(true)
+    expect(result.card.status).toBe("active")
+    expect(result.card.currency).toBe("EUR")
+    expect(result.card.currencyMatchesMerchant).toBe(false)
+  })
+})
+
 describe("setCardStatus", () => {
   it("moves active -> frozen and appends an event", () => {
     const issued = issueValid()
