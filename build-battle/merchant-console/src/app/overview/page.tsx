@@ -25,7 +25,7 @@ export default function OverviewPage() {
     <div className="border-t border-gray-200 p-4 sm:p-6 dark:border-gray-800">
       <dl className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <Stat
-          label="Gross volume (USD)"
+          label="Gross volume"
           value={formatMoneyCompact(metrics.grossVolume, "USD")}
           sub="Last 120 days"
         />

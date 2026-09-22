@@ -120,13 +120,6 @@ export interface Card {
   /** Integer minor units, in `currency`. Authorizations are not modelled yet. */
   spent: number
   currency: Currency
-  /**
-   * Server-verified at issue time: does `currency` match the merchant's
-   * settlement currency? A mismatch is recorded, never rejected - see
-   * `issueCard` - so this is the auditable verdict, not a validation error.
-   * Optional because only `issueCard` sets it; seed cards predate the check.
-   */
-  currencyMatchesMerchant?: boolean
   status: CardStatus
   categoryLock: CardCategory | null
   /** ISO 8601, always UTC. */

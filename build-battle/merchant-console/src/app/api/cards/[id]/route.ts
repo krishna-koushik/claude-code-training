@@ -1,6 +1,6 @@
 import { setCardStatus } from "@/data/cards"
+import { isCardStatus } from "@/data/card-status"
 import { jsonError } from "@/lib/api"
-import { isCardStatus } from "@/lib/cards"
 import { NextRequest, NextResponse } from "next/server"
 
 /**

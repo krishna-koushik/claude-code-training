@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/Button"
-import { allowedTransitions } from "@/lib/cards"
+import { allowedTransitions } from "@/data/card-status"
 import { CardStatus } from "@/data/types"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"

@@ -1,9 +1,9 @@
 import { Divider } from "@/components/Divider"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { cardById } from "@/data/cards"
+import { maskCardNumber } from "@/data/card-number"
 import { merchantById } from "@/data/merchants"
 import { CardCategory, Currency } from "@/data/types"
-import { maskCardNumber } from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import { cx } from "@/lib/utils"
@@ -63,11 +63,6 @@ export default async function CardDetail({
         </Field>
         <Field label="Spend limit">
           {formatMoney(card.spendLimit, card.currency)}
-          {card.currencyMatchesMerchant === false && (
-            <p className="mt-1 text-xs text-gray-500">
-              {merchant.name} settles in {merchant.currency}.
-            </p>
-          )}
         </Field>
         <Field label="Category lock">
           {card.categoryLock ? CATEGORY_LABELS[card.categoryLock] : "None"}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { MAX_SPEND_LIMIT_MINOR_UNITS } from "@/lib/cards"
+import { MAX_SPEND_LIMIT_MINOR_UNITS } from "./card-number"
 import {
   IssueCardInput,
   cardById,
@@ -185,22 +185,19 @@ describe("issueCard", () => {
 })
 
 describe("issueCard currency verification", () => {
-  it("records a match when the card currency equals the merchant's currency", () => {
-    // merchant (mch_01) settles in USD; validBody() defaults to USD too.
-    const result = issueValid()
-    expect(result.card.currencyMatchesMerchant).toBe(true)
+  it("rejects a currency that differs from the merchant's settlement currency", () => {
+    // merchant (mch_01) settles in USD; requesting EUR must be rejected.
+    const result = validateIssueCard(validBody({ currency: "EUR" }))
+    expect(result.ok).toBe(false)
+    expect(!result.ok && result.field).toBe("currency")
   })
 
-  it("records a mismatch, and still issues the card, when the currency differs from the merchant's", () => {
-    // A US merchant buying EUR ad spend is a legitimate cross-currency card,
-    // so the server verifies and records the mismatch without rejecting it.
-    // There is no route-level test harness in this repo, so a fresh
-    // (non-replayed) issue here stands in for the API's 201.
-    const result = issueValid({ currency: "EUR" })
+  it("validates and issues normally when the currency matches the merchant's", () => {
+    // validBody() defaults to USD, and merchant (mch_01) settles in USD too.
+    const result = issueValid()
     expect("cardNumber" in result).toBe(true)
     expect(result.card.status).toBe("active")
-    expect(result.card.currency).toBe("EUR")
-    expect(result.card.currencyMatchesMerchant).toBe(false)
+    expect(result.card.currency).toBe("USD")
   })
 })
 

@@ -1,12 +1,11 @@
 import { randomBytes, randomInt } from "node:crypto"
 import {
-  canTransition,
   generateCardNumber,
-  isCardCategory,
   lastFour,
   MAX_SPEND_LIMIT_MINOR_UNITS,
   NICKNAME_MAX_LENGTH,
-} from "@/lib/cards"
+} from "./card-number"
+import { canTransition, isCardCategory } from "./card-status"
 import { isCurrency } from "@/lib/money"
 import { pad } from "./generate"
 import { merchantById } from "./merchants"
@@ -23,10 +22,10 @@ import {
 
 /**
  * Server-only card data: the id allocator, the issue validator, and the
- * mutations. `src/lib/cards.ts` holds the isomorphic pieces (Luhn, masking,
- * the transition table) that a client component also imports — this module
- * may use `node:crypto` and the store, so nothing here is ever imported by
- * one.
+ * mutations. `src/data/card-number.ts` and `src/data/card-status.ts` hold
+ * the isomorphic pieces (Luhn, masking, the transition table) that a client
+ * component also imports — this module may use `node:crypto` and the store,
+ * so nothing here is ever imported by one.
  */
 
 export function cardById(id: string): Card | null {
@@ -93,7 +92,8 @@ export function validateIssueCard(body: unknown): ValidateResult {
       message: "merchantId is required.",
     }
   }
-  if (!merchantById(merchantId)) {
+  const merchant = merchantById(merchantId)
+  if (!merchant) {
     return {
       ok: false,
       field: "merchantId",
@@ -123,6 +123,13 @@ export function validateIssueCard(body: unknown): ValidateResult {
       ok: false,
       field: "currency",
       message: "currency must be one of USD, EUR, GBP.",
+    }
+  }
+  if (currency !== merchant.currency) {
+    return {
+      ok: false,
+      field: "currency",
+      message: `${merchant.name} settles in ${merchant.currency}, so this card cannot be issued in ${currency}.`,
     }
   }
 
@@ -206,12 +213,6 @@ export function issueCard(
   const cardNumber = generateCardNumber(() => randomInt(0, 10))
   const createdAt = now.toISOString()
 
-  // The server is the authority on the currency/merchant relationship, not
-  // the drawer's inline hint: verified and recorded here, never rejected — a
-  // US merchant buying EUR ad spend is a legitimate cross-currency card.
-  const merchant = merchantById(input.merchantId)
-  const currencyMatchesMerchant = merchant?.currency === input.currency
-
   const card: Card = {
     id: nextCardId(),
     merchantId: input.merchantId,
@@ -223,7 +224,6 @@ export function issueCard(
     spendLimit: input.spendLimit,
     spent: 0,
     currency: input.currency,
-    currencyMatchesMerchant,
     status: "active",
     categoryLock: input.categoryLock,
     createdAt,

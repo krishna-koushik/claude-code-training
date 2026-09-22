@@ -2,25 +2,15 @@
 
 import { Button } from "@/components/Button"
 import {
-  Drawer,
-  DrawerBody,
-  DrawerClose,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
+  Drawer, DrawerBody, DrawerClose, DrawerContent,
+  DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from "@/components/Drawer"
 import { Input } from "@/components/Input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/Select"
 import { CardCategory, Card, Currency } from "@/data/types"
-import { MAX_SPEND_LIMIT_MINOR_UNITS, NICKNAME_MAX_LENGTH } from "@/lib/cards"
+import { MAX_SPEND_LIMIT_MINOR_UNITS, NICKNAME_MAX_LENGTH } from "@/data/card-number"
 import { CURRENCIES, formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { Check, Copy, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -67,25 +57,21 @@ export function IssueCardDrawer({
   const [merchantId, setMerchantId] = useState("")
   const [spendLimitInput, setSpendLimitInput] = useState("")
   const [currency, setCurrency] = useState<Currency | "">("")
-  const [categoryLock, setCategoryLock] = useState<CardCategory | "none">(
-    "none",
-  )
+  const [categoryLock, setCategoryLock] = useState<CardCategory | "none">("none")
   const [formError, setFormError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
-  const nicknameRef = useRef<HTMLInputElement>(null)
-  const merchantTriggerRef = useRef<HTMLButtonElement>(null)
-  const spendLimitRef = useRef<HTMLInputElement>(null)
-  const currencyTriggerRef = useRef<HTMLButtonElement>(null)
-  const categoryTriggerRef = useRef<HTMLButtonElement>(null)
+  // One focus target per field, keyed by name - replaces five separate refs.
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({})
+  const registerField = (field: string) => (el: HTMLElement | null) => {
+    fieldRefs.current[field] = el
+  }
+  const focusField = (field: string) => fieldRefs.current[field]?.focus()
 
   const selectedMerchant = merchants.find((m) => m.id === merchantId)
-  const currencyForDisplay: Currency =
-    (currency || selectedMerchant?.currency || "USD") as Currency
+  const currencyForDisplay = (currency || selectedMerchant?.currency || "USD") as Currency
   const showCurrencyMismatch =
-    Boolean(selectedMerchant) &&
-    Boolean(currency) &&
-    currency !== selectedMerchant?.currency
+    Boolean(selectedMerchant) && Boolean(currency) && currency !== selectedMerchant?.currency
 
   const resetFields = () => {
     setNickname("")
@@ -101,14 +87,6 @@ export function IssueCardDrawer({
     setMerchantId(id)
     const merchant = merchants.find((m) => m.id === id)
     if (merchant) setCurrency(merchant.currency)
-  }
-
-  const focusField = (field: string) => {
-    if (field === "nickname") nicknameRef.current?.focus()
-    else if (field === "merchantId") merchantTriggerRef.current?.focus()
-    else if (field === "spendLimit") spendLimitRef.current?.focus()
-    else if (field === "currency") currencyTriggerRef.current?.focus()
-    else if (field === "categoryLock") categoryTriggerRef.current?.focus()
   }
 
   const handleCopy = async () => {
@@ -129,34 +107,23 @@ export function IssueCardDrawer({
 
     const errors: Record<string, string> = {}
     const trimmedNickname = nickname.trim()
-    if (!trimmedNickname) {
-      errors.nickname = "Enter a nickname."
-    } else if (trimmedNickname.length > NICKNAME_MAX_LENGTH) {
+    if (!trimmedNickname) errors.nickname = "Enter a nickname."
+    else if (trimmedNickname.length > NICKNAME_MAX_LENGTH)
       errors.nickname = `Nicknames are at most ${NICKNAME_MAX_LENGTH} characters.`
-    }
 
-    if (!merchantId) {
-      errors.merchantId = "Choose a merchant."
-    }
+    if (!merchantId) errors.merchantId = "Choose a merchant."
 
     const minorUnits = parseAmountToMinorUnits(spendLimitInput)
-    if (minorUnits === null) {
-      errors.spendLimit = "Enter an amount like 250 or 250.00."
-    } else if (minorUnits <= 0) {
-      errors.spendLimit = "Enter an amount greater than 0."
-    } else if (minorUnits > MAX_SPEND_LIMIT_MINOR_UNITS) {
+    if (minorUnits === null) errors.spendLimit = "Enter an amount like 250 or 250.00."
+    else if (minorUnits <= 0) errors.spendLimit = "Enter an amount greater than 0."
+    else if (minorUnits > MAX_SPEND_LIMIT_MINOR_UNITS)
       errors.spendLimit = `Spend limit cannot exceed ${formatMoney(MAX_SPEND_LIMIT_MINOR_UNITS, currencyForDisplay)}.`
-    }
 
-    if (!currency) {
-      errors.currency = "Choose a currency."
-    }
+    if (!currency) errors.currency = "Choose a currency."
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors)
-      const firstField = ["nickname", "merchantId", "spendLimit", "currency"].find(
-        (field) => errors[field],
-      )
+      const firstField = ["nickname", "merchantId", "spendLimit", "currency"].find((f) => errors[f])
       if (firstField) focusField(firstField)
       return
     }
@@ -195,9 +162,7 @@ export function IssueCardDrawer({
         setFormError(apiError?.message ?? "Could not issue this card. Try again.")
       }
     } catch {
-      setFormError(
-        "Could not reach the server. Check your connection and try again.",
-      )
+      setFormError("Could not reach the server. Check your connection and try again.")
     } finally {
       setSubmitting(false)
     }
@@ -231,242 +196,63 @@ export function IssueCardDrawer({
         </DrawerHeader>
 
         {phase === "form" ? (
-          <form
-            onSubmit={handleSubmit}
-            noValidate
-            className="flex flex-1 flex-col"
-          >
+          <form onSubmit={handleSubmit} noValidate className="flex flex-1 flex-col">
             <DrawerBody className="flex flex-1 flex-col gap-4 overflow-y-auto">
               {formError && (
-                <p
-                  role="alert"
-                  className="text-sm text-red-600 dark:text-red-500"
-                >
+                <p role="alert" className="text-sm text-red-600 dark:text-red-500">
                   {formError}
                 </p>
               )}
 
-              <div>
-                <label
-                  htmlFor="card-nickname"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Nickname
-                </label>
+              <Field
+                label="Nickname" htmlFor="card-nickname" error={fieldErrors.nickname} errorId="card-nickname-error"
+                help={`What ops calls it. Up to ${NICKNAME_MAX_LENGTH} characters.`} helpId="card-nickname-help">
                 <Input
-                  id="card-nickname"
-                  ref={nicknameRef}
-                  value={nickname}
-                  onChange={(event) => setNickname(event.target.value)}
-                  maxLength={NICKNAME_MAX_LENGTH}
-                  hasError={Boolean(fieldErrors.nickname)}
-                  aria-invalid={Boolean(fieldErrors.nickname)}
-                  aria-describedby={
-                    fieldErrors.nickname
-                      ? "card-nickname-error"
-                      : "card-nickname-help"
-                  }
-                  className="mt-1"
-                />
-                <p
-                  id="card-nickname-help"
-                  className="mt-1 text-xs text-gray-500"
-                >
-                  What ops calls it. Up to {NICKNAME_MAX_LENGTH} characters.
-                </p>
-                {fieldErrors.nickname && (
-                  <p
-                    id="card-nickname-error"
-                    role="alert"
-                    className="mt-1 text-sm text-red-600 dark:text-red-500"
-                  >
-                    {fieldErrors.nickname}
-                  </p>
-                )}
-              </div>
+                  id="card-nickname" ref={registerField("nickname")} value={nickname} className="mt-1"
+                  onChange={(event) => setNickname(event.target.value)} maxLength={NICKNAME_MAX_LENGTH}
+                  hasError={Boolean(fieldErrors.nickname)} aria-invalid={Boolean(fieldErrors.nickname)}
+                  aria-describedby={fieldErrors.nickname ? "card-nickname-error" : "card-nickname-help"} />
+              </Field>
 
-              <div>
-                <label
-                  id="card-merchant-label"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Merchant
-                </label>
-                <Select value={merchantId} onValueChange={handleMerchantChange}>
-                  <SelectTrigger
-                    ref={merchantTriggerRef}
-                    id="card-merchant-trigger"
-                    aria-labelledby="card-merchant-label"
-                    aria-describedby={
-                      fieldErrors.merchantId ? "card-merchant-error" : undefined
-                    }
-                    hasError={Boolean(fieldErrors.merchantId)}
-                    className="mt-1"
-                  >
-                    <SelectValue placeholder="Choose a merchant" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {merchants.map((merchant) => (
-                      <SelectItem key={merchant.id} value={merchant.id}>
-                        {merchant.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {fieldErrors.merchantId && (
-                  <p
-                    id="card-merchant-error"
-                    role="alert"
-                    className="mt-1 text-sm text-red-600 dark:text-red-500"
-                  >
-                    {fieldErrors.merchantId}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="card-spend-limit"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Spend limit
-                </label>
+              <Field
+                label="Spend limit" htmlFor="card-spend-limit" error={fieldErrors.spendLimit}
+                errorId="card-spend-limit-error" helpId="card-spend-limit-help"
+                help={`Up to ${formatMoney(MAX_SPEND_LIMIT_MINOR_UNITS, currencyForDisplay)} without extra approval.`}>
                 <div className="mt-1 flex items-center gap-2">
                   <Input
-                    id="card-spend-limit"
-                    ref={spendLimitRef}
-                    inputMode="decimal"
-                    value={spendLimitInput}
-                    onChange={(event) => setSpendLimitInput(event.target.value)}
-                    placeholder="250.00"
-                    hasError={Boolean(fieldErrors.spendLimit)}
+                    id="card-spend-limit" ref={registerField("spendLimit")} inputMode="decimal"
+                    value={spendLimitInput} onChange={(event) => setSpendLimitInput(event.target.value)}
+                    placeholder="250.00" hasError={Boolean(fieldErrors.spendLimit)}
                     aria-invalid={Boolean(fieldErrors.spendLimit)}
-                    aria-describedby={
-                      fieldErrors.spendLimit
-                        ? "card-spend-limit-error"
-                        : "card-spend-limit-help"
-                    }
-                  />
-                  <span className="text-sm text-gray-500">
-                    {currency || selectedMerchant?.currency || ""}
-                  </span>
+                    aria-describedby={fieldErrors.spendLimit ? "card-spend-limit-error" : "card-spend-limit-help"} />
+                  <span className="text-sm text-gray-500">{currency || selectedMerchant?.currency || ""}</span>
                 </div>
-                <p
-                  id="card-spend-limit-help"
-                  className="mt-1 text-xs text-gray-500"
-                >
-                  Up to {formatMoney(MAX_SPEND_LIMIT_MINOR_UNITS, currencyForDisplay)}{" "}
-                  without extra approval.
-                </p>
-                {fieldErrors.spendLimit && (
-                  <p
-                    id="card-spend-limit-error"
-                    role="alert"
-                    className="mt-1 text-sm text-red-600 dark:text-red-500"
-                  >
-                    {fieldErrors.spendLimit}
-                  </p>
-                )}
-              </div>
+              </Field>
 
-              <div>
-                <label
-                  id="card-currency-label"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Currency
-                </label>
-                <Select
-                  value={currency || undefined}
-                  onValueChange={(value) => setCurrency(value as Currency)}
-                >
-                  <SelectTrigger
-                    ref={currencyTriggerRef}
-                    id="card-currency-trigger"
-                    aria-labelledby="card-currency-label"
-                    aria-describedby={
-                      fieldErrors.currency
-                        ? "card-currency-error"
-                        : showCurrencyMismatch
-                          ? "card-currency-note"
-                          : undefined
-                    }
-                    hasError={Boolean(fieldErrors.currency)}
-                    className="mt-1"
-                  >
-                    <SelectValue placeholder="Choose a currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map((code) => (
-                      <SelectItem key={code} value={code}>
-                        {code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {fieldErrors.currency && (
-                  <p
-                    id="card-currency-error"
-                    role="alert"
-                    className="mt-1 text-sm text-red-600 dark:text-red-500"
-                  >
-                    {fieldErrors.currency}
-                  </p>
-                )}
-                {!fieldErrors.currency && showCurrencyMismatch && selectedMerchant && (
-                  <p
-                    id="card-currency-note"
-                    className="mt-1 text-sm text-amber-600 dark:text-amber-500"
-                  >
-                    {selectedMerchant.name} settles in {selectedMerchant.currency}.
-                    This card will be issued in {currency}.
-                  </p>
-                )}
-              </div>
+              <SelectField
+                label="Merchant" labelId="card-merchant-label" triggerId="card-merchant-trigger"
+                value={merchantId} onValueChange={handleMerchantChange} placeholder="Choose a merchant"
+                options={merchants.map((m) => ({ value: m.id, label: m.name }))}
+                fieldRef={registerField("merchantId")} error={fieldErrors.merchantId} errorId="card-merchant-error"
+                describedBy={fieldErrors.merchantId ? "card-merchant-error" : undefined} />
 
-              <div>
-                <label
-                  id="card-category-label"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Category lock
-                </label>
-                <Select
-                  value={categoryLock}
-                  onValueChange={(value) =>
-                    setCategoryLock(value as CardCategory | "none")
-                  }
-                >
-                  <SelectTrigger
-                    ref={categoryTriggerRef}
-                    id="card-category-trigger"
-                    aria-labelledby="card-category-label"
-                    aria-describedby="card-category-help"
-                    className="mt-1"
-                  >
-                    <SelectValue placeholder="No lock" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No lock</SelectItem>
-                    {CATEGORIES.map((category) => (
-                      <SelectItem key={category.value} value={category.value}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p id="card-category-help" className="mt-1 text-xs text-gray-500">
-                  What the card may be spent on. Not editable after issue.
-                </p>
-              </div>
+              <SelectField
+                label="Currency" labelId="card-currency-label" triggerId="card-currency-trigger"
+                value={currency || undefined} onValueChange={(value) => setCurrency(value as Currency)}
+                placeholder="Choose a currency" options={CURRENCIES.map((code) => ({ value: code, label: code }))}
+                fieldRef={registerField("currency")} error={fieldErrors.currency} errorId="card-currency-error"
+                noteId="card-currency-note" note={showCurrencyMismatch && selectedMerchant ? `${selectedMerchant.name} settles in ${selectedMerchant.currency}. This card cannot be issued in ${currency}.` : undefined}
+                describedBy={fieldErrors.currency ? "card-currency-error" : showCurrencyMismatch ? "card-currency-note" : undefined} />
+
+              <SelectField
+                label="Category lock" labelId="card-category-label" triggerId="card-category-trigger"
+                value={categoryLock} onValueChange={(value) => setCategoryLock(value as CardCategory | "none")}
+                placeholder="No lock" options={[{ value: "none", label: "No lock" }, ...CATEGORIES]}
+                fieldRef={registerField("categoryLock")} describedBy="card-category-help"
+                help="What the card may be spent on. Not editable after issue." helpId="card-category-help" />
             </DrawerBody>
             <DrawerFooter>
-              <Button
-                type="submit"
-                isLoading={submitting}
-                loadingText="Issuing…"
-                disabled={submitting}
-              >
+              <Button type="submit" isLoading={submitting} loadingText="Issuing…" disabled={submitting}>
                 Issue card
               </Button>
             </DrawerFooter>
@@ -478,19 +264,13 @@ export function IssueCardDrawer({
                 {issued?.cardNumber ? (
                   <div className="flex flex-col gap-3">
                     <p className="text-sm text-gray-900 dark:text-gray-50">
-                      This is the only time this number will be shown. Copy it
-                      now.
+                      This is the only time this number will be shown. Copy it now.
                     </p>
                     <div className="flex items-center gap-2">
                       <p className="font-mono text-lg tracking-widest text-gray-900 dark:text-gray-50">
                         {issued.cardNumber}
                       </p>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="gap-1.5 py-1.5"
-                        onClick={handleCopy}
-                      >
+                      <Button type="button" variant="secondary" className="gap-1.5 py-1.5" onClick={handleCopy}>
                         {copied ? (
                           <>
                             <Check className="size-4 shrink-0" aria-hidden="true" />
@@ -505,15 +285,12 @@ export function IssueCardDrawer({
                       </Button>
                     </div>
                     <p className="text-sm text-gray-500">
-                      {issued.card.nickname} ·{" "}
-                      {formatMoney(issued.card.spendLimit, issued.card.currency)}{" "}
-                      limit
+                      {issued.card.nickname} · {formatMoney(issued.card.spendLimit, issued.card.currency)} limit
                     </p>
                   </div>
                 ) : (
                   <p className="text-sm text-gray-900 dark:text-gray-50">
-                    This card was already issued. Its number was shown once and
-                    cannot be shown again.
+                    This card was already issued. Its number was shown once and cannot be shown again.
                   </p>
                 )}
               </div>
@@ -529,5 +306,80 @@ export function IssueCardDrawer({
         )}
       </DrawerContent>
     </Drawer>
+  )
+}
+
+/**
+ * Shared label/help/error/note scaffold for a form field.
+ *
+ * `htmlFor` pairs a native control's `<label>` the usual way; `labelId`
+ * instead puts the id on the label itself, for a Radix `Select` trigger to
+ * point its own `aria-labelledby` at. At most one of `error` (rendered as a
+ * `role="alert"` node) or `note` is shown below the control - error always
+ * wins, matching the exact per-field behaviour this replaces.
+ */
+function Field({
+  label, htmlFor, labelId, help, helpId, error, errorId, note, noteId, children,
+}: {
+  label: string; htmlFor?: string; labelId?: string
+  help?: React.ReactNode; helpId?: string; error?: string; errorId?: string
+  note?: React.ReactNode; noteId?: string; children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label htmlFor={htmlFor} id={labelId} className="text-sm font-medium text-gray-900 dark:text-gray-50">
+        {label}
+      </label>
+      {children}
+      {help && <p id={helpId} className="mt-1 text-xs text-gray-500">{help}</p>}
+      {error ? (
+        <p id={errorId} role="alert" className="mt-1 text-sm text-red-600 dark:text-red-500">
+          {error}
+        </p>
+      ) : (
+        note && (
+          <p id={noteId} className="mt-1 text-sm text-amber-600 dark:text-amber-500">
+            {note}
+          </p>
+        )
+      )}
+    </div>
+  )
+}
+
+/**
+ * A `Field` whose control is a Radix `Select`. Three of the five form fields
+ * (merchant, currency, category lock) are select-driven and otherwise repeat
+ * the identical trigger/content wiring - this is that wiring, parameterised.
+ */
+function SelectField({
+  label, labelId, triggerId, help, helpId, error, errorId, note, noteId,
+  value, onValueChange, placeholder, options, fieldRef, describedBy,
+}: {
+  label: string; labelId: string; triggerId: string
+  help?: string; helpId?: string; error?: string; errorId?: string
+  note?: React.ReactNode; noteId?: string; describedBy: string | undefined
+  value: string | undefined; onValueChange: (value: string) => void
+  placeholder: string; options: { value: string; label: string }[]
+  fieldRef: (el: HTMLElement | null) => void
+}) {
+  return (
+    <Field label={label} labelId={labelId} help={help} helpId={helpId} error={error} errorId={errorId} note={note} noteId={noteId}>
+      <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger
+          ref={fieldRef} id={triggerId} aria-labelledby={labelId} className="mt-1"
+          aria-describedby={describedBy} aria-invalid={error ? true : undefined}
+          hasError={Boolean(error)}>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
   )
 }
