@@ -50,3 +50,18 @@ export function parseAmountToMinorUnits(input: string): number | null {
   const cents = (fraction + "00").slice(0, 2)
   return Number(whole) * 100 + Number(cents)
 }
+
+/**
+ * The supported currencies, derived from `SYMBOLS` so there is exactly one
+ * list in the codebase - `SYMBOLS` is the only runtime artefact with the
+ * right keys, and `Record<Currency, string>` above is exhaustiveness-checked
+ * by TypeScript.
+ */
+export const CURRENCIES = Object.keys(SYMBOLS) as Currency[]
+
+/** True for client input that is one of the supported currency codes. */
+export function isCurrency(value: unknown): value is Currency {
+  return (
+    typeof value === "string" && (CURRENCIES as readonly string[]).includes(value)
+  )
+}

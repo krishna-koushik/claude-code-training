@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   formatMoney,
   formatMoneyCompact,
+  isCurrency,
   parseAmountToMinorUnits,
   sumMinorUnits,
 } from "./money"
@@ -78,5 +79,21 @@ describe("parseAmountToMinorUnits", () => {
     expect(parseAmountToMinorUnits("-250")).toBeNull()
     expect(parseAmountToMinorUnits("twelve")).toBeNull()
     expect(parseAmountToMinorUnits("")).toBeNull()
+  })
+})
+
+describe("isCurrency", () => {
+  it("accepts every supported currency code", () => {
+    expect(isCurrency("USD")).toBe(true)
+    expect(isCurrency("EUR")).toBe(true)
+    expect(isCurrency("GBP")).toBe(true)
+  })
+
+  it("rejects an unsupported code, wrong case, and non-strings", () => {
+    expect(isCurrency("JPY")).toBe(false)
+    expect(isCurrency("usd")).toBe(false)
+    expect(isCurrency("")).toBe(false)
+    expect(isCurrency(null)).toBe(false)
+    expect(isCurrency(1)).toBe(false)
   })
 })

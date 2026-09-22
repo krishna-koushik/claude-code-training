@@ -1,6 +1,6 @@
-import { generate } from "./generate"
+import { generate, generateCards } from "./generate"
 import { merchants } from "./merchants"
-import { Dispute, Payment, Payout, Refund } from "./types"
+import { Card, Dispute, Payment, Payout, Refund } from "./types"
 
 /**
  * In-memory store.
@@ -19,6 +19,7 @@ interface Store {
   refunds: Refund[]
   disputes: Dispute[]
   payouts: Payout[]
+  cards: Card[]
 }
 
 declare global {
@@ -28,10 +29,18 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { merchants, payments, refunds, disputes, payouts, cards }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()
+
+// NWP-201 added `cards` after some dev servers already pinned a store on
+// globalThis. Without a restart, `createStore()` never re-runs and the pinned
+// store has no `cards` key even though the `Store` type promises one — guard
+// so a hot-reloaded dev server doesn't crash on `store.cards.push(...)`.
+// A real restart still runs `createStore()` and never needs this.
+store.cards ??= []
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.__northwindStore = store
